@@ -1,106 +1,188 @@
-# ƸӜƷ butterfly 3.0
+# Butterfly 4.0
 
-![](http://paradoxxxzero.github.io/assets/butterfly_2.0_1.gif)
+A modern async web terminal emulator built with FastAPI(asyncio) + xterm.js.
 
+This is a complete rewrite of [Butterfly](https://github.com/paradoxxxzero/butterfly) by [Florian Mounier](http://paradoxxxzero.github.io/), replacing Tornado with asyncio/FastAPI and the custom CoffeeScript terminal with xterm.js.
 
-## Description
+## What Changed from 3.x
 
-Butterfly is a xterm compatible terminal that runs in your browser.
+| Layer     | Butterfly 3.x              | Butterfly 4.0                        |
+| --------- | -------------------------- | ------------------------------------ |
+| Backend   | Tornado                    | FastAPI + uvicorn                    |
+| Frontend  | CoffeeScript (5000+ LOC)   | xterm.js (CDN)                       |
+| PTY I/O   | `ioloop.add_handler()`     | `asyncio.add_reader()`               |
+| Config    | `tornado.options`          | Pydantic Settings + click            |
+| Logging   | 50KB history only          | script(1)/scriptreplay(1) compatible |
+| Auth      | X.509, PAM                 | None (proxy-based)                   |
+| Package   | setup.py + bower + grunt   | pyproject.toml + uv                  |
+| Python    | 2/3 compat                 | 3.12+                                |
+| WebSocket | 2 connections (ctl + data) | 1 connection (binary + JSON)         |
 
+## Architecture
 
-## Features
-
-* xterm compatible (support a lot of unused features!)
-* Native browser scroll and search
-* Theming in css / sass [(20 preset themes)](https://github.com/paradoxxxzero/butterfly-themes) endless possibilities!
-* HTML in your terminal! cat images and use &lt;table&gt;
-* Multiple sessions support (à la screen -x) to simultaneously access a terminal from several places on the planet!
-* Secure authentication with X509 certificates!
-* 16,777,216 colors support!
-* Keyboard text selection!
-* Desktop notifications on terminal output!
-* Geolocation from browser!
-* May work on firefox too!
-
-## Try it
-
-``` bash
-$ pip install butterfly
-$ pip install butterfly[themes]  # If you want to use themes
-$ pip install butterfly[systemd]  # If you want to use systemd
-$ butterfly
+```
+src/butterfly/
+├── __init__.py          # Version
+├── __main__.py          # python -m butterfly
+├── app.py               # FastAPI app factory + lifespan
+├── config.py            # Pydantic Settings (BUTTERFLY_* env vars)
+├── cli.py               # click CLI entry point
+├── pty_manager.py       # asyncio PTY (fork, add_reader, resize)
+├── motd.py              # MOTD banner (built-in or custom file)
+├── themes.py            # xterm.js color themes (6 built-in)
+├── ssl_certs.py         # SSL certificate generation (openssl CLI)
+├── session_logger.py    # script(1)/scriptreplay(1) compatible logging
+├── session.py           # SessionManager + TerminalSession
+├── websocket.py         # WebSocket handler (single connection)
+├── routes.py            # HTTP routes + theme API
+└── static/
+    ├── index.html       # xterm.js terminal page (CDN)
+    ├── css/terminal.css # Fullscreen terminal styling
+    └── js/terminal.js   # xterm.js WebSocket client
 ```
 
-A new tab should appear in your browser. Then type
+### WebSocket Protocol (Single Connection)
 
-``` bash
-$ butterfly help
-```
+| Direction        | Frame Type | Content                                                      |
+| ---------------- | ---------- | ------------------------------------------------------------ |
+| client -> server | Binary     | Raw terminal input                                           |
+| client -> server | Text       | JSON `{"type": "resize", "cols": N, "rows": N}`              |
+| server -> client | Binary     | Raw terminal output                                          |
+| server -> client | Text       | JSON `{"type": "session", "id": "..."}` / `{"type": "exit"}` |
 
-To get an overview of butterfly features.
+### PTY Management
 
+- `pty.fork()` for PTY creation
+- `fcntl` O_NONBLOCK for non-blocking I/O
+- `asyncio.get_running_loop().add_reader(fd, callback)` for zero-latency reads
+- `TIOCSWINSZ` ioctl for resize
+- `SIGHUP` + `SIGCONT` + `waitpid` for clean shutdown
 
-## Run it as a server
+### Session Features
 
-``` bash
-$ butterfly.server.py --host=myhost --port=57575
-```
+- Multi-client: multiple browser tabs can share the same PTY session
+- History buffer (50KB): reconnecting clients receive replay of recent output
+- Auto-cleanup: sessions are removed when PTY exits and all clients disconnect
+- MOTD: customizable banner on connect (`--motd-art butterfly`, custom file path, or `none`)
+- Themes: 6 built-in xterm.js color themes, switchable via Alt+T or `--theme`
+- Session list: **Alt+S** to browse active sessions, switch between them, or create new ones
+- Per-session command override via `?cmd=htop` query parameter
+- `--cmd` flag to globally replace the default shell with a command
 
-Or with login prompt
+## Quick Start
 
 ```bash
-$ butterfly.server.py --host=myhost --port=57575 --login
+uv sync
+uv run butterfly --unsecure --debug
 ```
 
-Or with PAM authentication (ROOT required)
+Open <http://localhost:57575> in your browser.
+
+## SSL / TLS
+
+By default Butterfly runs in secure mode (SSL required). Use `--unsecure` to skip SSL, or generate certificates:
 
 ```bash
-# butterfly.server.py --host=myhost --port=57575 --login --pam_profile=sshd
+# Generate self-signed CA + server certificate
+uv run butterfly --generate-certs --host=myhost.example.com
+
+# Run with SSL (default)
+uv run butterfly --host=myhost.example.com
+
+# Run without SSL
+uv run butterfly --unsecure
 ```
 
-You can change `sshd` to your preferred PAM profile.
+Certificates are stored in `~/.config/butterfly/ssl/` (or `/etc/butterfly/ssl/` for root):
 
-The first time it will ask you to generate the certificates (see: [here](http://paradoxxxzero.github.io/2014/03/21/butterfly-with-ssl-auth.html))
-
-
-## Run it with systemd (linux)
-
-Systemd provides a way to automatically activate daemons when needed (socket activation):
-
-``` bash
-$ cd /etc/systemd/system
-$ curl -O https://raw.githubusercontent.com/paradoxxxzero/butterfly/master/butterfly.service
-$ curl -O https://raw.githubusercontent.com/paradoxxxzero/butterfly/master/butterfly.socket
-$ systemctl enable butterfly.socket
-$ systemctl start butterfly.socket
+```text
+butterfly_ca.crt / butterfly_ca.key          — Self-signed CA
+butterfly_<host>.crt / butterfly_<host>.key  — Server certificate (signed by CA)
 ```
 
-Don't forget to update the /etc/butterfly/butterfly.conf file with your server options (host, port, shell, ...) and to install butterfly with the [systemd] flag.
+## CLI Options
 
+```bash
+uv run butterfly --help
+uv run butterfly --host 0.0.0.0 --port 8080
+uv run butterfly --shell /bin/zsh
+uv run butterfly --cmd htop            # Run command instead of shell
+uv run butterfly --unsecure            # Run without SSL
+uv run butterfly --generate-certs      # Generate certs and exit
+uv run butterfly --ssl-dir /path/to/certs
+uv run butterfly --theme dracula        # Color theme
+uv run butterfly --motd-art /path/to/banner.txt  # Custom MOTD file
+uv run butterfly --motd-art none       # No banner
+uv run butterfly --no-log              # Disable session logging
+uv run butterfly --log-dir /tmp/sessions
+```
 
-## Contribute
+### Alternative: uvicorn direct
 
-and make the world better (or just butterfly).
+Environment variables (`BUTTERFLY_*`) are used for configuration:
 
-Don't hesitate to fork the repository and start hacking on it, I am very open to pull requests.
+```bash
+BUTTERFLY_UNSECURE=true \
+  uvicorn butterfly.app:app --host 0.0.0.0 --port 57575
+```
 
-If you don't know what to do go to the github issues and pick one you like.
+## Themes
 
-If you want to motivate me to continue working on this project you can tip me, see: http://paradoxxxzero.github.io/about/
+6 built-in color themes: `default`, `dracula`, `solarized-dark`, `solarized-light`, `monokai`, `nord`, `aether`
 
-Client side development use [grunt](http://gruntjs.com/) and [bower](http://bower.io/).
+- **Alt+T** in the terminal to open the theme picker
+- `--theme <name>` to set the server default
+- Theme selection is saved in localStorage per browser
+
+### Theme API
+
+```bash
+curl /api/themes              # List available themes
+curl /api/themes/dracula      # Get specific theme colors
+```
+
+## Session Logging
+
+Terminal sessions are recorded in script(1)/scriptreplay(1) compatible format:
+
+```
+logs/
+└── 2026/02/24/
+    ├── typescript-a1b2c3d4-x9y8z7    # Raw output
+    └── typescript-a1b2c3d4-x9y8z7.timing  # Timing data
+```
+
+Replay with:
+
+```bash
+scriptreplay --timing=<file>.timing <file>
+```
+
+## Docker
+
+```bash
+docker build -t butterfly .
+docker run -p 57575:57575 butterfly
+```
+
+## Development
+
+```bash
+make install     # uv sync
+make lint        # ruff check
+make fmt         # ruff format + fix
+make run-debug   # Run with debug logging
+```
 
 ## Credits
 
-The js part is based on [term.js](https://github.com/chjj/term.js/) which is based on [jslinux](http://bellard.org/jslinux/).
-## Author
-
-[Florian Mounier](http://paradoxxxzero.github.io/)
+Butterfly was originally created by [Florian Mounier (paradoxxxzero)](https://github.com/paradoxxxzero/butterfly). This 4.0 rewrite preserves the spirit of the original while modernizing the stack.
 
 ## License
 
 ```
-butterfly Copyright (C) 2015-2017  Florian Mounier
+Butterfly Copyright (C) 2015-2017  Florian Mounier
+Butterfly 4.0 Copyright (C) 2026-  Kazushige Takeuchi
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -114,28 +196,4 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
-```
-
-## Docker
-There is a docker repository created for this project that is set to automatically rebuild when there is a push
-into this repository: https://registry.hub.docker.com/u/garland/butterfly/
-
-### Example usage
-
-Starting with login and password
-
-``` bash
-docker run --env PASSWORD=password -d garland/butterfly --login
-```
-
-Starting with no password
-
-``` bash
-docker run -d -p 57575:57575 garland/butterfly
-```
-
-Starting with a different port
-
-``` bash
-docker run -d -p 12345:12345 garland/butterfly --port=12345
 ```
