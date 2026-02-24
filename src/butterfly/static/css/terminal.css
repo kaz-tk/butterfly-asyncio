@@ -1,0 +1,215 @@
+/* Butterfly terminal styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+}
+
+#terminal {
+    width: 100%;
+    height: 100%;
+}
+
+/* xterm.js overrides */
+.xterm {
+    padding: 4px;
+}
+
+.xterm-viewport::-webkit-scrollbar {
+    width: 8px;
+}
+
+.xterm-viewport::-webkit-scrollbar-track {
+    background: #1a1a1a;
+}
+
+.xterm-viewport::-webkit-scrollbar-thumb {
+    background: #444;
+    border-radius: 4px;
+}
+
+.xterm-viewport::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Theme picker overlay (Alt+T) */
+#theme-picker {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(30, 30, 50, 0.95);
+    border: 1px solid #444;
+    border-radius: 8px;
+    padding: 16px;
+    z-index: 1000;
+    min-width: 200px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.theme-picker-title {
+    color: #aaa;
+    font-family: monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #333;
+}
+
+.theme-btn {
+    display: block;
+    width: 100%;
+    padding: 8px 12px;
+    margin: 4px 0;
+    background: transparent;
+    color: #ccc;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: monospace;
+    font-size: 13px;
+    text-align: left;
+    transition: all 0.15s ease;
+}
+
+.theme-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: #555;
+    color: #fff;
+}
+
+.theme-btn.active {
+    background: rgba(100, 150, 255, 0.15);
+    border-color: #6496ff;
+    color: #8ab4ff;
+}
+
+/* Session list overlay (Alt+S) */
+#session-list {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(30, 30, 50, 0.95);
+    border: 1px solid #444;
+    border-radius: 8px;
+    padding: 16px;
+    z-index: 1000;
+    min-width: 320px;
+    max-width: 500px;
+    max-height: 70vh;
+    overflow-y: auto;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.session-list-title {
+    color: #aaa;
+    font-family: monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #333;
+}
+
+.session-item {
+    display: block;
+    width: 100%;
+    padding: 8px 12px;
+    margin: 4px 0;
+    background: transparent;
+    color: #ccc;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: monospace;
+    font-size: 13px;
+    text-align: left;
+    transition: all 0.15s ease;
+    text-decoration: none;
+}
+
+.session-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: #555;
+    color: #fff;
+}
+
+.session-item.active {
+    background: rgba(100, 150, 255, 0.15);
+    border-color: #6496ff;
+    color: #8ab4ff;
+}
+
+.session-item .session-id {
+    font-weight: bold;
+}
+
+.session-item .session-meta {
+    font-size: 11px;
+    color: #888;
+    margin-top: 2px;
+}
+
+.session-item.active .session-meta {
+    color: #7aa0e0;
+}
+
+.session-item .session-status {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+.session-status.alive {
+    background: #4caf50;
+}
+
+.session-status.dead {
+    background: #f44336;
+}
+
+.session-empty {
+    color: #666;
+    font-family: monospace;
+    font-size: 13px;
+    text-align: center;
+    padding: 16px;
+}
+
+.session-new-btn {
+    display: block;
+    width: 100%;
+    padding: 8px 12px;
+    margin-top: 8px;
+    background: rgba(76, 175, 80, 0.15);
+    color: #81c784;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: monospace;
+    font-size: 13px;
+    text-align: center;
+    transition: all 0.15s ease;
+}
+
+.session-new-btn:hover {
+    background: rgba(76, 175, 80, 0.25);
+    border-color: rgba(76, 175, 80, 0.5);
+    color: #a5d6a7;
+}

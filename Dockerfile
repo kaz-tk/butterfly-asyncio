@@ -1,28 +1,19 @@
-FROM ubuntu:16.04
+FROM python:3.12-slim
 
-RUN apt-get update \
- && apt-get install -y -q --no-install-recommends \
-    build-essential \
-    libffi-dev \
-    libssl-dev \
-    python-dev \
-    python-setuptools \
-    ca-certificates \
- && easy_install pip \
- && pip install --upgrade setuptools \
- && apt-get clean \
- && rm -r /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tini \
+    && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /opt
-ADD . /opt/app
-WORKDIR /opt/app
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-RUN python setup.py build \
- && python setup.py install
+WORKDIR /app
+COPY pyproject.toml .
+RUN uv sync --no-dev --no-install-project
 
-ADD docker/run.sh /opt/run.sh
+COPY src/ src/
+RUN uv sync --no-dev
 
 EXPOSE 57575
 
-CMD ["butterfly.server.py", "--unsecure", "--host=0.0.0.0"]
-ENTRYPOINT ["docker/run.sh"]
+ENTRYPOINT ["tini", "--"]
+CMD ["uv", "run", "butterfly", "--host", "0.0.0.0", "--port", "57575"]

@@ -1,37 +1,23 @@
-include Makefile.config
--include Makefile.custom.config
-
-all: install lint check-outdated run-debug
+.PHONY: install lint fmt run run-debug clean
 
 install:
-	test -d $(VENV) || virtualenv $(VENV) -p $(PYTHON_VERSION)
-	$(PIP) install --upgrade --no-cache pip setuptools -e .[lint,themes] devcore
-	$(NPM) install
-
-clean:
-	rm -fr $(NODE_MODULES)
-	rm -fr $(VENV)
-	rm -fr *.egg-info
+	uv sync
 
 lint:
-	$(PYTEST) --flake8 -m flake8 $(PROJECT_NAME)
-	$(PYTEST) --isort -m isort $(PROJECT_NAME)
+	uv run ruff check src/
 
-check-outdated:
-	$(PIP) list --outdated --format=columns
+fmt:
+	uv run ruff format src/
+	uv run ruff check --fix src/
 
-ARGS ?= --port=1212 --unsecure --debug
+run:
+	uv run butterfly
+
 run-debug:
-	$(PYTHON) ./butterfly.server.py $(ARGS)
+	uv run butterfly --debug
 
-build-coffee:
-	$(NODE_MODULES)/.bin/grunt
+test:
+	uv run pytest
 
-release: build-coffee
-	git pull
-	$(eval VERSION := $(shell PROJECT_NAME=$(PROJECT_NAME) $(VENV)/bin/devcore bump $(LEVEL)))
-	git commit -am "Bump $(VERSION)"
-	git tag $(VERSION)
-	$(PYTHON) setup.py sdist bdist_wheel upload
-	git push
-	git push --tags
+clean:
+	rm -rf .venv dist build *.egg-info __pycache__

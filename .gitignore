@@ -1,13 +1,29 @@
-*.crt
-*.key
-*.p12
-*.pyc
-node_modules/
-*.src.coffee
-*.map
-sass/scss
+# Python
+__pycache__/
+*.py[cod]
 *.egg-info/
+dist/
 build/
-.cache/
-.env*
-.pytest_cache
+.venv/
+
+# UV
+uv.lock
+
+# IDE
+.vscode/
+.idea/
+
+# Environment
+.env
+.env.*
+
+# Session logs
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test
+.pytest_cache/
+.coverage
